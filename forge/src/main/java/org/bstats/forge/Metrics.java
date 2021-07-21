@@ -8,6 +8,7 @@ import net.minecraftforge.fml.common.ModContainer;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.apache.logging.log4j.Logger;
 import org.bstats.MetricsBase;
 import org.bstats.charts.CustomChart;
 import org.bstats.json.JsonObjectBuilder;
@@ -19,7 +20,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Metrics {
 
@@ -37,27 +37,24 @@ public class Metrics {
 
     private boolean enabled = false;
 
-    private Metrics(ModContainer plugin, Logger logger, Path configDir, int serviceId) {
+    public Metrics(ModContainer plugin, Logger logger, Path configDir, int serviceId) {
         this.plugin = plugin;
         this.logger = logger;
         this.configDir = configDir;
         this.serviceId = serviceId;
 
         MinecraftForge.EVENT_BUS.register(this);
-    }
 
-    @Mod.EventHandler
-    public void startup(FMLPreInitializationEvent event) {
         try {
             loadConfig();
         } catch (IOException e) {
             // Failed to load configuration
-            logger.log(Level.WARNING, "Failed to load bStats config!", e);
+            logger.warn("Failed to load bStats config!", e);
             return;
         }
 
         metricsBase = new MetricsBase(
-                "forge",
+                "sponge",
                 serverUUID,
                 serviceId,
                 enabled,
@@ -65,7 +62,7 @@ public class Metrics {
                 this::appendServiceData,
                 task -> MinecraftForge.EVENT_BUS.register(new Scheduler(task)),
                 () -> true,
-                (s, throwable) -> logger.throwing(s, s, throwable),
+                logger::warn,
                 logger::info,
                 logErrors,
                 logSentData,
@@ -166,7 +163,7 @@ public class Metrics {
 
     public class Scheduler {
 
-        private final Runnable runnable;
+        private Runnable runnable;
 
         public Scheduler(Runnable runnable) {
             this.runnable = runnable;
@@ -175,6 +172,8 @@ public class Metrics {
         @SubscribeEvent
         public void onServerTick(TickEvent.ServerTickEvent event) {
             this.runnable.run();
+            this.runnable = null;
+            MinecraftForge.EVENT_BUS.unregister(this);
         }
     }
 }
