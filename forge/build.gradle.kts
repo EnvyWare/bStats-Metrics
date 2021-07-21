@@ -40,9 +40,7 @@ repositories {
 dependencies {
     "minecraft"("net.minecraftforge:forge:1.12.2-14.23.5.2854")
     "shadow"("org.spongepowered:configurate-hocon:4.0.0")
-    api(project(":base")) {
-        isTransitive = true
-    }
+    "shadow"(project(":base"))
 }
 
 tasks.withType<Test> {
