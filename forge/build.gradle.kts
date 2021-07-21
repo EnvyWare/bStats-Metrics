@@ -6,6 +6,8 @@ buildscript {
     repositories {
         mavenCentral()
         maven(url = "https://maven.minecraftforge.net/")
+        maven(url = "https://files.minecraftforge.net/maven")
+        maven(url = "https://plugins.gradle.org/m2/")
         maven(url = "https://oss.sonatype.org/content/repositories/snapshots")
     }
     dependencies {
@@ -34,6 +36,9 @@ repositories {
     mavenCentral()
     maven {
         url = uri("https://repo.spongepowered.org/repository/maven-public/")
+    }
+    maven {
+        url = uri("https://repo.spongepowered.org/maven")
     }
 }
 
