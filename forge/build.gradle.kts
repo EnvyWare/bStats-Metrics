@@ -29,7 +29,7 @@ apply {
 }
 
 configure<UserDevExtension> {
-    mappings("snapshot", "20180814-1.12")
+    mappings("official", "1.16.5")
 }
 
 repositories {
@@ -43,7 +43,7 @@ repositories {
 }
 
 dependencies {
-    "minecraft"("net.minecraftforge:forge:1.12.2-14.23.5.2854")
+    "minecraft"("net.minecraftforge:forge:1.16.5-36.2.34")
     "shadow"("org.spongepowered:configurate-hocon:4.0.0")
     "shadow"(project(":base"))
 }

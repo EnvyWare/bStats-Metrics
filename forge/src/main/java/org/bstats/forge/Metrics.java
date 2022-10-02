@@ -1,13 +1,12 @@
 package org.bstats.forge;
 
+import com.google.common.collect.Lists;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.ModContainer;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModContainer;
+import net.minecraftforge.fml.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.Logger;
 import org.bstats.MetricsBase;
 import org.bstats.charts.CustomChart;
@@ -18,8 +17,8 @@ import org.spongepowered.configurate.hocon.HoconConfigurationLoader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.UUID;
-import java.util.logging.Level;
 
 public class Metrics {
 
@@ -53,6 +52,9 @@ public class Metrics {
             return;
         }
 
+        Scheduler scheduler = new Scheduler();
+        MinecraftForge.EVENT_BUS.register(scheduler);
+
         metricsBase = new MetricsBase(
                 "sponge",
                 serverUUID,
@@ -60,7 +62,7 @@ public class Metrics {
                 enabled,
                 this::appendPlatformData,
                 this::appendServiceData,
-                task -> MinecraftForge.EVENT_BUS.register(new Scheduler(task)),
+                task -> scheduler.runnable.add(task),
                 () -> true,
                 logger::warn,
                 logger::info,
@@ -70,7 +72,7 @@ public class Metrics {
         );
 
         StringBuilder builder = new StringBuilder().append(System.lineSeparator());
-        builder.append("Plugin ").append(plugin.getName()).append(" is using bStats Metrics ");
+        builder.append("Plugin ").append(plugin.getModId()).append(" is using bStats Metrics ");
         if (enabled) {
             builder.append(" and is allowed to send data.");
         } else {
@@ -144,11 +146,11 @@ public class Metrics {
     }
 
     private void appendPlatformData(JsonObjectBuilder builder) {
-        MinecraftServer server = FMLCommonHandler.instance().getMinecraftServerInstance();
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
 
         builder.appendField("playerAmount", server.getPlayerList().getPlayers().size());
-        builder.appendField("onlineMode", server.isServerInOnlineMode() ? 1 : 0);
-        builder.appendField("minecraftVersion", server.getMinecraftVersion());
+        builder.appendField("onlineMode", server.usesAuthentication() ? 1 : 0);
+        builder.appendField("minecraftVersion", server.getServerVersion());
 
         builder.appendField("javaVersion", System.getProperty("java.version"));
         builder.appendField("osName", System.getProperty("os.name"));
@@ -158,22 +160,20 @@ public class Metrics {
     }
 
     private void appendServiceData(JsonObjectBuilder builder) {
-        builder.appendField("pluginVersion", plugin.getVersion());
+        builder.appendField("pluginVersion", plugin.getModInfo().getVersion().toString());
     }
 
-    public class Scheduler {
+    public static class Scheduler {
 
-        private Runnable runnable;
-
-        public Scheduler(Runnable runnable) {
-            this.runnable = runnable;
-        }
+        private List<Runnable> runnable = Lists.newCopyOnWriteArrayList();
 
         @SubscribeEvent
         public void onServerTick(TickEvent.ServerTickEvent event) {
-            this.runnable.run();
-            this.runnable = null;
-            MinecraftForge.EVENT_BUS.unregister(this);
+            for (Runnable runnable1 : runnable) {
+                runnable1.run();
+            }
+
+            this.runnable.clear();
         }
     }
 }
